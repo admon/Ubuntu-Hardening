@@ -1,7 +1,7 @@
 # Ubuntu-Hardening
 Ubuntu 24.04 bash script for a initial hardening of a clean system
 
-As of Today (November 19, 2024), this script is divided on 3 areas:
+ this script will be divided on 3 areas:
 
 ## System Hardening and CIS 24.04 recommendations
 I'm working on automating the recommendations from the CIS Benchmark related to this OS version, some on the things in place are:
