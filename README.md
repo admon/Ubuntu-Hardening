@@ -1,3 +1,4 @@
+
 # Ubuntu-Hardening
 Ubuntu 24.04 bash script for a initial hardening of a clean system
 
@@ -29,4 +30,12 @@ This section is currently for my CyberSec Lab, including other software such as
 - Suricata as NIDS/NIPS
 - Docker images for MISP, Splunk, Nessus, Kali and more
 - Python for quick scripts, VSCode on Web, and API setup
-- Honeypots 
+- Honeypots
+
+## 1/17/25 Update
+Remove the initial file and moving away from a monolithic approach, using a mre robust interface and sub-scripts for the different sections
+
+Steps:
+- Extract the zip file on the prefered location
+- chmod -R the file modules folder and content
+- "sudo bash startup.sh" to run the file and sub-scripts as sudo, needed as most of the changes need admin permissions.
