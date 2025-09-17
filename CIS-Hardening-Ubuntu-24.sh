@@ -63,29 +63,19 @@ run_command "apt purge -y apport" "1.5.2 Remove apport"
 start_section "1.6"
 BANNER=$(cat << 'EOF'
 ******************************************************
-*                                                    *
 *          Authorized Access Only                   *
-*                                                    *
 ******************************************************
-
 This system is for authorized use only. Unauthorized access or use is prohibited and may result in disciplinary action and/or civil and criminal penalties.
-
-All activities on this system are subject to monitoring and recording. By using this system, you expressly consent to such monitoring and recording.
+Activities on this system are subject to monitoring and recording. By using this system, you expressly consent to such monitoring and recording.
 
 Legal Notice:
 -------------
-Use of this system constitutes consent to security monitoring and testing. All activities are logged and monitored.
-Unauthorized access, use, or modification of this system or its data may result in disciplinary action, civil, and/or criminal penalties.
+Use of this system constitutes consent to security monitoring. Unauthorized access, use, or modification of this system or its data may result in disciplinary action, civil, and/or criminal penalties.
 
-**Important Security Measures:**
-1. **Do not share your login credentials.**
-2. **Report any suspicious activity to IT security immediately.**
-3. **Adhere to the security policies and guidelines.**
 EOF
 )
 run_command "echo '$BANNER' > /etc/issue.net" "1.6.1 Set login banner"
 run_command "echo '$BANNER' > /etc/issue" "1.6.1 Set login banner"
-run_command "echo '$BANNER' > /etc/motd" "1.6.1 Set login banner"
 run_command "chmod 644 /etc/issue.net /etc/issue /etc/motd" "1.6.2 Set banner permissions"
 run_command "chown root:root /etc/issue.net /etc/issue /etc/motd" "1.6.3 Set banner ownership"
 
@@ -95,10 +85,9 @@ run_command "dpkg -l gdm3 >/dev/null 2>&1 && apt purge -y gdm3 || true" "1.7.1 R
 # ===============[ SECTION 2: Services ]===============
 start_section "2.1"
 services=(
-    avahi-daemon autofs isc-dhcp-server bind9 dnsmasq vsftpd slapd
-    nfs-kernel-server ypserv cups rpcbind rsync samba snmpd tftpd-hpa
-    squid apache2 nginx xinetd xserver-common telnetd postfix
-    nis rsh-client talk talkd telnet inetutils-telnet ldap-utils ftp tnftp lp
+    avahi-daemon autofs xinetd xserver-common telnetd
+    nfs-kernel-server ypserv cups rpcbind samba snmpd tftpd-hpa
+    nis rsh-client talk talkd inetutils-telnet ldap-utils ftp tnftp lp
 )
 for service in "${services[@]}"; do
     run_command "dpkg -l $service >/dev/null 2>&1 && apt purge -y $service || true" "2.1.1 Remove $service"
@@ -140,17 +129,6 @@ run_command 'echo "net.ipv4.conf.all.accept_redirects = 0" >> /etc/sysctl.d/60-n
 run_command 'echo "net.ipv4.conf.default.accept_redirects = 0" >> /etc/sysctl.d/60-net.conf' "3.3.6 Disable default redirects"
 run_command 'echo "net.ipv4.tcp_syncookies = 1" >> /etc/sysctl.d/60-net.conf' "3.3.7 Enable SYN cookies"
 run_command "sysctl -p /etc/sysctl.d/60-net.conf" "3.3.8 Apply network settings"
-
-# ===============[ SECTION 4: Host Based Firewall ]===============
-start_section "4.1"
-run_command "apt purge -y iptables-persistent" "4.1.1 Remove iptables-persistent"
-run_command "ufw --force enable" "4.1.2 Enable UFW"
-run_command "ufw allow in on lo" "4.1.3 Allow loopback inbound"
-run_command "ufw allow out on lo" "4.1.4 Allow loopback outbound"
-run_command "ufw deny in from 127.0.0.0/8" "4.1.5 Block external loopback"
-run_command "ufw default deny incoming" "4.1.6 Default deny incoming"
-run_command "ufw default allow outgoing" "4.1.7 Default allow outgoing"
-run_command "ufw deny in from ::1" "4.1.8 Block IPv6 loopback"
 
 # ===============[ SECTION 5: Configure SSH Server ]===============
 
@@ -201,30 +179,31 @@ run_command 'chmod 440 /etc/sudoers.d/01_base' "5.2.4 Set sudoers file permissio
 run_command 'visudo -c -f /etc/sudoers.d/01_base' "5.2.5 Validate sudoers syntax"
 
 start_section "5.4"
-run_command 'sed -i "/^PASS_MAX_DAYS/c\PASS_MAX_DAYS 180" /etc/login.defs' "5.4.1.1 Set password max days to 180"
+run_command 'sed -i "/^PASS_MAX_DAYS/c\PASS_MAX_DAYS 360" /etc/login.defs' "5.4.1.1 Set password max days to 360"
 run_command 'sed -i "/^PASS_MIN_DAYS/c\PASS_MIN_DAYS 7" /etc/login.defs' "5.4.1.1 Set password min days to 7"
-run_command 'sed -i "/^PASS_WARN_AGE/c\PASS_WARN_AGE 14" /etc/login.defs' "5.4.1.1 Set password warning age to 14"
-run_command 'useradd -D -f 30' "5.4.1.2 Set inactive account lock to 30 days"
+run_command 'sed -i "/^PASS_WARN_AGE/c\PASS_WARN_AGE 30" /etc/login.defs' "5.4.1.1 Set password warning age to 30"
+run_command 'useradd -D -f 60' "5.4.1.2 Set inactive account lock to 60 days"
+
 # 5.4.1.3 - Password complexity
-# run_command 'apt install -y libpam-pwquality' "5.4.1.3 Install pwquality"
-# run_command 'sed -i "/pam_pwquality.so/c\password requisite pam_pwquality.so retry=3 minlen=14 difok=7 ucredit=-1 lcredit=-1 dcredit=-1 ocredit=-1 enforce_for_root" /etc/pam.d/common-password' "5.4.1.3 Configure password complexity"
+run_command 'apt install -y libpam-pwquality' "5.4.1.3 Install pwquality"
+run_command 'sed -i "/pam_pwquality.so/c\password requisite pam_pwquality.so retry=3 minlen=10 difok=5 ucredit=-1 lcredit=-1 dcredit=-1 enforce_for_root" /etc/pam.d/common-password' "5.4.1.3 Configure password complexity"
 
 # # 5.4.1.4 - Password reuse
 # run_command 'sed -i "/pam_unix.so/c\password [success=1 default=ignore] pam_unix.so obscure use_authtok try_first_pass sha512 remember=5" /etc/pam.d/common-password' "5.4.1.4 Limit password reuse (5)"
-run_command 'sed -i "/^ENCRYPT_METHOD/c\ENCRYPT_METHOD SHA512" /etc/login.defs' "5.4.1.5 Set password hashing to SHA512"
-run_command 'sed -i "/^UMASK/c\UMASK 077" /etc/login.defs' "5.4.2 Set default umask to 077"
+#run_command 'sed -i "/^ENCRYPT_METHOD/c\ENCRYPT_METHOD SHA512" /etc/login.defs' "5.4.1.5 Set password hashing to SHA512"
+#run_command 'sed -i "/^UMASK/c\UMASK 077" /etc/login.defs' "5.4.2 Set default umask to 077"
 run_command 'echo "TMOUT=1800" >> /etc/profile.d/timeout.sh' "5.4.2 Set shell timeout (30 min)"
 run_command 'chmod +x /etc/profile.d/timeout.sh' "5.4.2 Make timeout script executable"
-run_command 'passwd -l root' "5.4.3 Lock root account"
-run_command 'echo "umask 027" >> /etc/bash.bashrc' "5.4.4 Set bash default umask"
-run_command 'echo "umask 027" >> /root/.bash_profile' "5.4.4 Set bash default root umask"
-run_command 'echo "umask 027" >> /root/.bashrc' "5.4.4 Set bash default root umask"
+#run_command 'passwd -l root' "5.4.3 Lock root account"
+#run_command 'echo "umask 027" >> /etc/bash.bashrc' "5.4.4 Set bash default umask"
+#run_command 'echo "umask 027" >> /root/.bash_profile' "5.4.4 Set bash default root umask"
+#run_command 'echo "umask 027" >> /root/.bashrc' "5.4.4 Set bash default root umask"
 
-run_command 'awk -F: '\''($2 == "" ) { print $1 " does not have a password" }'\'' /etc/shadow | tee /var/log/empty_passwords.log' "5.5.1 Audit empty passwords"
-run_command 'grep "^+:" /etc/passwd | tee /var/log/legacy_passwd_entries.log' "6.2.2 Audit legacy NIS entries"
-run_command 'awk -F: '\''($3 == 0) { print $1 }'\'' /etc/passwd | grep -v "^root$" | tee /var/log/uid0_accounts.log' "5.5.3 Audit duplicate UID 0 accounts"
-run_command 'awk -F: '$3=="0"{print $1":"$3}' /etc/group" | tee /var/log/gid0_accounts.log' "5.5.5 Audit duplicate UID 0 accounts"
-run_command 'awk -F: '\''($3 == 0) { print $1 }'\'' /etc/passwd | grep -v "^root$" | tee /var/log/uid0_accounts.log' "6.2.3 Audit duplicate UID 0 accounts"
+#run_command 'awk -F: '\''($2 == "" ) { print $1 " does not have a password" }'\'' /etc/shadow | tee /var/log/empty_passwords.log' "5.5.1 Audit empty passwords"
+#run_command 'grep "^+:" /etc/passwd | tee /var/log/legacy_passwd_entries.log' "6.2.2 Audit legacy NIS entries"
+#run_command 'awk -F: '\''($3 == 0) { print $1 }'\'' /etc/passwd | grep -v "^root$" | tee /var/log/uid0_accounts.log' "5.5.3 Audit duplicate UID 0 accounts"
+#run_command 'awk -F: '$3=="0"{print $1":"$3}' /etc/group" | tee /var/log/gid0_accounts.log' "5.5.5 Audit duplicate UID 0 accounts"
+#run_command 'awk -F: '\''($3 == 0) { print $1 }'\'' /etc/passwd | grep -v "^root$" | tee /var/log/uid0_accounts.log' "6.2.3 Audit duplicate UID 0 accounts"
 
 
 
@@ -238,106 +217,72 @@ RULES=$(cat << 'EOF'
 -D
 -b 8192
 -f 1
+
 -w /var/log/audit/ -k auditlog
 -w /etc/audit/ -p wa -k auditconfig
 -w /etc/libaudit.conf -p wa -k auditconfig
 -w /etc/audisp/ -p wa -k audispconfig
 -w /sbin/auditctl -p x -k audittools
 -w /sbin/auditd -p x -k audittools
--a exit,always -F arch=b32 -S mknod -S mknodat -k specialfiles
--a exit,always -F arch=b64 -S mknod -S mknodat -k specialfiles
--a exit,always -F arch=b32 -S mount -S umount -S umount2 -k mount
--a exit,always -F arch=b64 -S mount -S umount2 -k mount
--a exit,always -F arch=b32 -S adjtimex -S settimeofday -S clock_settime -k time
--a exit,always -F arch=b64 -S adjtimex -S settimeofday -S clock_settime -k time
--w /usr/sbin/stunnel -p x -k stunnel
+
 -w /etc/cron.allow -p wa -k cron
 -w /etc/cron.deny -p wa -k cron
 -w /etc/cron.d/ -p wa -k cron
--w /etc/cron.daily/ -p wa -k cron
--w /etc/cron.hourly/ -p wa -k cron
--w /etc/cron.monthly/ -p wa -k cron
--w /etc/cron.weekly/ -p wa -k cron
 -w /etc/crontab -p wa -k cron
 -w /etc/group -p wa -k etcgroup
 -w /etc/passwd -p wa -k etcpasswd
 -w /etc/gshadow -k etcgroup
 -w /etc/shadow -k etcpasswd
 -w /etc/security/opasswd -k opasswd
--w /usr/sbin/groupadd -p x -k group_modification
--w /usr/sbin/groupmod -p x -k group_modification
--w /usr/sbin/addgroup -p x -k group_modification
--w /usr/sbin/useradd -p x -k user_modification
--w /usr/sbin/usermod -p x -k user_modification
--w /usr/sbin/adduser -p x -k user_modification
 -w /etc/login.defs -p wa -k login
 -w /etc/securetty -p wa -k login
--w /var/log/faillog -p wa -k login
--w /var/log/lastlog -p wa -k login
--w /var/log/tallylog -p wa -k login
 -w /etc/hosts -p wa -k hosts
--w /etc/network/ -p wa -k network
 -w /etc/inittab -p wa -k init
--w /etc/init.d/ -p wa -k init
--w /etc/init/ -p wa -k init
 -w /etc/ld.so.conf -p wa -k libpath
 -w /etc/localtime -p wa -k localtime
 -w /etc/sysctl.conf -p wa -k sysctl
--w /etc/modprobe.conf -p wa -k modprobe
+-w /etc/modprobe.d/ -p wa -k modprobe
 -w /etc/pam.d/ -p wa -k pam
--w /etc/security/limits.conf -p wa  -k pam
--w /etc/security/pam_env.conf -p wa -k pam
--w /etc/security/namespace.conf -p wa -k pam
--w /etc/security/namespace.init -p wa -k pam
--w /etc/aliases -p wa -k mail
--w /etc/postfix/ -p wa -k mail
+-w /etc/sudoers -p rw -k sudoers
+-w /etc/sudoers.d/ -p rw -k sudoers
 -w /etc/ssh/sshd_config -k sshd
--a exit,always -F arch=b32 -S sethostname -k hostname
--a exit,always -F arch=b64 -S sethostname -k hostname
--w /etc/issue -p wa -k etcissue
--w /etc/issue.net -p wa -k etcissue
--a exit,always -F arch=b64 -F euid=0 -S execve -k rootcmd
--a exit,always -F arch=b32 -F euid=0 -S execve -k rootcmd
--a exit,always -F arch=b64 -S open -F dir=/etc -F success=0 -k unauthedfileacess
--a exit,always -F arch=b64 -S open -F dir=/bin -F success=0 -k unauthedfileacess
--a exit,always -F arch=b64 -S open -F dir=/sbin -F success=0 -k unauthedfileacess
--a exit,always -F arch=b64 -S open -F dir=/usr/bin -F success=0 -k unauthedfileacess
--a exit,always -F arch=b64 -S open -F dir=/usr/sbin -F success=0 -k unauthedfileacess
--a exit,always -F arch=b64 -S open -F dir=/var -F success=0 -k unauthedfileacess
--a exit,always -F arch=b64 -S open -F dir=/home -F success=0 -k unauthedfileacess
--a exit,always -F arch=b64 -S open -F dir=/srv -F success=0 -k unauthedfileacess
+-w /etc/networks -p wa -k network
+-w /etc/network/ -p wa -k network
+-w /etc/security/limits.conf -p wa -k pam
+
+-w /usr/sbin/groupadd -p x -k group_modification
+-w /usr/sbin/groupmod -p x -k group_modification
+-w /usr/sbin/useradd -p x -k user_modification
+-w /usr/sbin/usermod -p x -k user_modification
 -w /bin/su -p x -k priv_esc
 -w /usr/bin/sudo -p x -k priv_esc
--w /etc/sudoers -p rw -k priv_esc
 -w /sbin/shutdown -p x -k power
--w /sbin/poweroff -p x -k power
 -w /sbin/reboot -p x -k power
--w /sbin/halt -p x -k power
--w /etc/sudoers -p wa -k scope
--w /etc/sudoers.d -p wa -k scope
--a always,exit -F arch=b64 -C euid!=uid -F auid!=unset -S execve -k user_emulation
--a always,exit -F arch=b32 -C euid!=uid -F auid!=unset -S execve -k user_emulation
+
+-a always,exit -F arch=b64 -F euid=0 -S execve -k rootcmd
+-a always,exit -F arch=b32 -F euid=0 -S execve -k rootcmd
 -a always,exit -F arch=b64 -S sethostname,setdomainname -k system-locale
 -a always,exit -F arch=b32 -S sethostname,setdomainname -k system-locale
--w /etc/issue -p wa -k system-locale
--w /etc/issue.net -p wa -k system-locale
--w /etc/hosts -p wa -k system-locale
--w /etc/networks -p wa -k system-locale
--w /etc/network/ -p wa -k system-locale
+-a always,exit -F arch=b64 -C euid!=uid -F auid!=unset -S execve -k user_emulation
+-a always,exit -F arch=b32 -C euid!=uid -F auid!=unset -S execve -k user_emulation
+-a always,exit -F arch=b64 -S mount,umount,umount2 -k mount
+-a always,exit -F arch=b32 -S mount,umount,umount2 -k mount
+-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time
+-a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime -k time
+
+-w /var/log/faillog -p wa -k login
+-w /var/log/lastlog -p wa -k login
+-w /var/log/tallylog -p wa -k login
 -w /var/run/utmp -p wa -k session
 -w /var/log/wtmp -p wa -k session
 -w /var/log/btmp -p wa -k session
--w /var/log/lastlog -p wa -k logins
--w /var/run/faillock -p wa -k logins
--w /etc/apparmor/ -p wa -k MAC-policy
--w /etc/apparmor.d/ -p wa -k MAC-policy
 EOF
 )
 run_command "echo '$RULES' > /etc/audit/rules.d/50-scope.rules" "6.1.2 Configure audit rules"
 # 6.1.3 - Configure auditd storage
-run_command 'echo "max_log_file = 50" >> /etc/audit/auditd.conf' "6.1.3 Set max audit log size (50MB)"
+run_command 'echo "max_log_file = 100" >> /etc/audit/auditd.conf' "6.1.3 Set max audit log size (50MB)"
 run_command 'echo "max_log_file_action = rotate" >> /etc/audit/auditd.conf' "6.1.3 Configure log rotation"
-run_command 'echo "num_logs = 40" >> /etc/audit/auditd.conf' "6.1.3 Configure log rotation"
+run_command 'echo "num_logs = 6" >> /etc/audit/auditd.conf' "6.1.3 Configure log rotation"
 run_command 'echo "disk_full_action = rotate" >> /etc/audit/auditd.conf' "6.1.3 Configure disk alerts"
 run_command 'echo "space_left_action = email" >> /etc/audit/auditd.conf' "6.1.3 Configure disk alerts"
 
@@ -383,31 +328,10 @@ run_command 'echo "-w /usr/bin/ -p x -k processes" >> /etc/audit/rules.d/50-proc
 run_command 'echo "-a always,exit -F arch=b64 -S execve -k processes" >> /etc/audit/rules.d/50-processes.rules' "6.4.2 Audit process execution"
 run_command 'service auditd restart' "6.4.2 Reload audit rules"
 
-# ===============[ SECTION 7: Host Based Firewall ]===============
-start_section "6.1"
-run_command 'chmod 644 /etc/passwd' "6.1.2 Set /etc/passwd permissions (644)"
-run_command 'chown root:root /etc/passwd' "6.1.2 Verify /etc/passwd ownership"
-run_command 'chmod 000 /etc/shadow' "6.1.3 Lock /etc/shadow permissions (000)"
-run_command 'chown root:shadow /etc/shadow' "6.1.3 Set /etc/shadow ownership"
-run_command 'chmod 644 /etc/group' "6.1.4 Set /etc/group permissions (644)"
-run_command 'chown root:root /etc/group' "6.1.4 Verify /etc/group ownership"
-run_command 'chmod 000 /etc/gshadow' "6.1.5 Lock /etc/gshadow permissions (000)"
-run_command 'chown root:shadow /etc/gshadow' "6.1.5 Set /etc/gshadow ownership"
-run_command 'chmod 600 /etc/passwd-' "6.1.6 Secure /etc/passwd- backup (600)"
-run_command 'chown root:root /etc/passwd-' "6.1.6 Verify /etc/passwd- ownership"
-run_command 'chmod 600 /etc/shadow-' "6.1.7 Secure /etc/shadow- backup (600)"
-run_command 'chown root:shadow /etc/shadow-' "6.1.7 Set /etc/shadow- ownership"
-run_command 'chmod 600 /etc/group-' "6.1.8 Secure /etc/group- backup (600)"
-run_command 'chown root:root /etc/group-' "6.1.8 Verify /etc/group- ownership"
-run_command 'chmod 600 /etc/gshadow-' "6.1.9 Secure /etc/gshadow- backup (600)"
-run_command 'chown root:shadow /etc/gshadow-' "6.1.9 Set /etc/gshadow- ownership"
-
 # Final report
 echo -e "\nHardening complete. Summary of errors:"
 grep -r "\[✗\]" "$LOG_DIR/section_logs/" | tee "$LOG_DIR/error_summary.log"
 echo -e "\nFull logs available in: $LOG_DIR"
-
-
 
 run_command 'apt-get install -y debsums' "7.5.2 Install package verification"
 run_command 'debsums_init' "7.5.2 Initialize package checksums"
